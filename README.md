@@ -1,2 +1,2 @@
 # MicroCheck
-hotspot packet analyzer
+giak simple hotspot packet analyzer

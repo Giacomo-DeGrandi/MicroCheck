@@ -14,14 +14,30 @@ import com.example.microcheck.ui.theme.MicroCheckTheme
 import android.content.Intent
 import android.net.VpnService
 import android.app.Activity
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+
 
 
 class MainActivity : ComponentActivity() {
 
+    // set const for VPN_REQUEST_CODE
     private val VPN_REQUEST_CODE = 1
+    // set variable
+    private lateinit var requestPermissionLauncher: ActivityResultLauncher<Intent?>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                // Permission granted by user, start the VPN service
+            } else {
+                // Handle permission denial or other errors
+            }
+        }
+
+
         setContent {
             MicroCheckTheme {
                 // A surface container using the 'background' color from the theme
@@ -34,28 +50,6 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-
-    fun prepareVpnService() {
-        val vpnIntent = VpnService.prepare(this)
-        if (vpnIntent != null) {
-            startActivityForResult(vpnIntent, VPN_REQUEST_CODE)
-        } else {
-            // Handle case where user has already granted permission
-            // You can start the VPN service here or do other tasks
-        }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == VPN_REQUEST_CODE) {
-            if (resultCode == Activity.RESULT_OK) {
-                // Permission granted by user, start the VPN service
-            } else {
-                // Handle permission denial or other errors
-            }
-        }
-    }
-
 }
 
 @Composable

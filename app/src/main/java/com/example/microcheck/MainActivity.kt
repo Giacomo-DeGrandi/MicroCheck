@@ -1,85 +1,99 @@
 package com.example.microcheck
 
 import android.app.Activity
+import android.content.Intent
+import android.net.VpnService
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import com.example.microcheck.ui.theme.MicroCheckTheme
-import android.content.Intent
-import android.net.VpnService
-import android.widget.Toast
-import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
 
-    private lateinit var requestPermissionLauncher: ActivityResultLauncher<Intent?>
-    private var isMonitoring: Boolean = false // to track the monitoring state
+    private lateinit var resultLauncher: ActivityResultLauncher<Intent>
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                startService(Intent(this, MyVpnService::class.java))
-            } else {
-                Toast.makeText(this, "VPN permission denied.", Toast.LENGTH_SHORT).show()
+        resultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+                val startIntent = Intent(this, MyVpnService::class.java).apply {
+                    action = MyVpnService.ACTION_START
+                }
+                startService(startIntent)
             }
         }
 
         setContent {
-            AppUI { toggleVpnService() }
+            MainScreen()
         }
     }
 
-    private fun requestVpnPermission() {
-        VpnService.prepare(this)?.let {
-            requestPermissionLauncher.launch(it)
-        } ?: startService(Intent(this, MyVpnService::class.java))
-    }
-    private fun toggleVpnService() {
-        if (isMonitoring) {
-            stopService(Intent(this, MyVpnService::class.java))
-            isMonitoring = false
+    private fun startVpnService() {
+        val intent = VpnService.prepare(this)
+        if (intent != null) {
+            resultLauncher.launch(intent)
         } else {
-            requestVpnPermission()
+            val startIntent = Intent(this, MyVpnService::class.java).apply {
+                action = MyVpnService.ACTION_START
+            }
+            startService(startIntent)
         }
     }
 
-}
+    companion object {
+    }
 
-@Composable
-fun AppUI(isMonitoring: Boolean, onButtonClick: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = "MicroCheck", fontSize = 24.sp)
-        Spacer(modifier = Modifier.height(24.dp))
-        Text(text = "Check for potential threats by monitoring network traffic.")
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(onClick = onButtonClick) {
-            Text(text = if (isMonitoring) "Stop Monitoring" else "Start Monitoring")
+    @Composable
+    fun MainScreen() {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Spacer(modifier = Modifier.weight(1f))
+            ShowHideTextApp()
         }
     }
-}
 
-@Preview(showBackground = true)
-@Composable
-fun PreviewAppUI() {
-    MicroCheckTheme {
-        AppUI(isMonitoring = false) {}
+    @Composable
+    fun ShowHideTextApp() {
+        // This state holds whether the VPN is running or not.
+        var vpnActive by remember { mutableStateOf(false) }
+
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Button(onClick = {
+                vpnActive = !vpnActive
+                if (vpnActive) {
+                    startVpnService()
+                } else {
+                    val stopIntent = Intent(this@MainActivity, MyVpnService::class.java).apply {
+                        action = MyVpnService.ACTION_STOP
+                    }
+                    startService(stopIntent)
+                }
+            }) {
+                if (vpnActive) {
+                    Text("Stop VPN")
+                } else {
+                    Text("Start VPN")
+                }
+            }
+        }
+    }
+
+
+    @Preview(showBackground = true)
+    @Composable
+    fun PreviewShowHideTextApp() {
+        ShowHideTextApp()
     }
 }
-
-
